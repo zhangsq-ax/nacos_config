@@ -1,4 +1,4 @@
-module github.com/zhansq-ax/nacos_config
+module github.com/zhangsq-ax/nacos_config
 
 go 1.15
 
