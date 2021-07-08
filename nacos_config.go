@@ -5,75 +5,42 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nacos-group/nacos-sdk-go/clients/config_client"
-	"github.com/nacos-group/nacos-sdk-go/clients/nacos_client"
-	"github.com/nacos-group/nacos-sdk-go/common/constant"
-	"github.com/nacos-group/nacos-sdk-go/common/http_agent"
 	"github.com/nacos-group/nacos-sdk-go/vo"
+	"github.com/zhangsq-ax/nacos-helper-go"
+	"github.com/zhangsq-ax/nacos-helper-go/options"
 	"gopkg.in/yaml.v2"
 )
 
+// NacosConfig Nacos 配置对象
 type NacosConfig struct {
-	configClient *config_client.ConfigClient
+	configClient *config_client.IConfigClient
 	dataId       string
 	group        string
 }
 
-type NacosOptions struct {
-	Host        string `json:"host"`
-	Port        uint64 `json:"port"`
-	NamespaceId string `json:"namespace_id"`
-	Group       string `json:"group"`
-	DataId      string `json:"data_id"`
-}
-
-func NewNacosConfig(opts NacosOptions) (*NacosConfig, error) {
-	clientConfig := constant.ClientConfig{
-		NamespaceId:         opts.NamespaceId,
-		TimeoutMs:           10 * 1000,
-		BeatInterval:        5 * 1000,
-		ListenInterval:      300 * 1000,
-		NotLoadCacheAtStart: true,
-	}
-
-	serverConfig := constant.ServerConfig{
-		IpAddr:      opts.Host,
-		Port:        opts.Port,
-		ContextPath: "/nacos",
-	}
-
-	nc := nacos_client.NacosClient{}
-	err := nc.SetServerConfig([]constant.ServerConfig{serverConfig})
-	if err != nil {
-		return nil, err
-	}
-	err = nc.SetClientConfig(clientConfig)
-	if err != nil {
-		return nil, err
-	}
-	err = nc.SetHttpAgent(&http_agent.HttpAgent{})
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := config_client.NewConfigClient(&nc)
+// NewNacosConfig 创建 NacosConfig 对象
+func NewNacosConfig(opts *options.NacosOptions, dataId string, group string) (*NacosConfig, error) {
+	configClient, err := nacos_helper.GetConfigClient(opts)
 	if err != nil {
 		return nil, err
 	}
 
 	return &NacosConfig{
-		configClient: &client,
-		dataId:       opts.DataId,
-		group:        opts.Group,
+		configClient: configClient,
+		dataId:       dataId,
+		group:        group,
 	}, nil
 }
 
+// GetConfigString 以字符串形式获取配置
 func (nc *NacosConfig) GetConfigString() (string, error) {
-	return nc.configClient.GetConfig(vo.ConfigParam{
+	return (*nc.configClient).GetConfig(vo.ConfigParam{
 		DataId: nc.dataId,
 		Group:  nc.group,
 	})
 }
 
+// GetConfigJSON 以 JSON 格式获取配置
 func (nc *NacosConfig) GetConfigJSON(target interface{}) error {
 	content, err := nc.GetConfigString()
 	if err != nil {
@@ -87,6 +54,7 @@ func (nc *NacosConfig) GetConfigJSON(target interface{}) error {
 	return nil
 }
 
+// GetConfigYAML 以 YAML 格式获取配置
 func (nc *NacosConfig) GetConfigYAML(target interface{}) error {
 	content, err := nc.GetConfigString()
 	if err != nil {
